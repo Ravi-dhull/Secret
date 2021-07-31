@@ -5,6 +5,7 @@ const bodyParser = require("body-parser");
 const ejs = require("ejs");
 const mongoose = require('mongoose');
 var encrypt = require('mongoose-encryption');
+const md5=require("md5");
 
 const app = express();
 
@@ -17,13 +18,20 @@ app.use(express.static("public"));
 
 mongoose.connect("mongodb://localhost:27017/Secrets",{useUnifiedTopology: true, useNewUrlParser: true, useCreateIndex: true });
 
-//using new mongoose.Schema method for encryption purposes else we can simple use const secasfdsdf={useremail:String,pass:String};
-const secretschema=new mongoose.Schema({
+const secretschema={
   useremail: String,
   userpassword: String
-});
+};
 
-secretschema.plugin(encrypt,{secret:process.env.SECRET,excludeFromEncryption: ['useremail']});
+
+//using new mongoose.Schema method for encryption purposes else we can simple use const secasfdsdf={useremail:String,pass:String};
+// const secretschema=new mongoose.Schema({
+//   useremail: String,
+//   userpassword: String
+// });
+
+//use encrypt plugin to encrypt password
+//secretschema.plugin(encrypt,{secret:process.env.SECRET,excludeFromEncryption: ['useremail']});
 const secretModel=mongoose.model("Credential",secretschema);
 
 app.get("/",function(req,res){
@@ -56,9 +64,9 @@ app.get("/logout",function(req,res){
 
 app.post("/login",function(req,res){
   const emailid=req.body.username;
-  const password=req.body.password;
-  console.log(emailid);
-  console.log(password);
+  const password=md5(req.body.password);
+  // console.log(emailid);
+  // console.log(password);
   secretModel.findOne({useremail:emailid},function(err,founduser){
       if(err){
         console.log(err);
@@ -82,7 +90,7 @@ app.post("/login",function(req,res){
 });
 app.post("/register",function(req,res){
   const emailid=req.body.username;
-  const password=req.body.password;
+  const password=md5(req.body.password);
   console.log(emailid);
   console.log(password);
   const user=new secretModel({
