@@ -9,6 +9,8 @@ const passport=require("passport");
 const passportLocalMongoose=require("passport-local-mongoose");
 const GoogleStrategy = require('passport-google-oauth20').Strategy;
 const findOrCreate = require('mongoose-findorcreate');
+const FacebookStrategy = require("passport-facebook").Strategy;
+
 //to use below when encrypting using AES algorithm
 //var encrypt = require('mongoose-encryption');
 //use below when using plain hashin
@@ -51,7 +53,8 @@ mongoose.connect("mongodb://localhost:27017/Secrets", {
 const secretschema=new mongoose.Schema({
   useremail: String,
   userpassword: String,
-  googleId: String
+  googleId: String,
+  facebookId: String
 });
 
 //use below plugin to use passportLocalMongoose
@@ -93,6 +96,19 @@ passport.use(new GoogleStrategy({
     });
   }
 ));
+passport.use(new FacebookStrategy({
+    clientID: process.env.FACEBOOK_APP_ID,
+    clientSecret: process.env.FACEBOOK_APP_SECRET,
+    callbackURL: "http://localhost:3000/auth/facebook/secrets"
+  },
+  function(accessToken, refreshToken, profile, cb) {
+    console.log(profile);
+    secretModel.findOrCreate({ facebookId: profile.id }, function (err, user) {
+      return cb(err, user);
+    });
+  }
+));
+
 
 app.get("/", function(req, res) {
   res.render("home", {});
@@ -108,6 +124,16 @@ app.get('/auth/google/secrets',
     // Successful authentication, redirect to secrets.
     res.redirect('/secrets');
   });
+
+  app.get('/auth/facebook',
+    passport.authenticate('facebook'));
+
+  app.get('/auth/facebook/secrets',
+    passport.authenticate('facebook', { failureRedirect: '/login' }),
+    function(req, res) {
+      // Successful authentication, redirect to secrets.
+      res.redirect('/secrets');
+    });
 
 app.get("/register", function(req, res) {
   res.render("register", {});
