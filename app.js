@@ -54,7 +54,8 @@ const secretschema=new mongoose.Schema({
   useremail: String,
   userpassword: String,
   googleId: String,
-  facebookId: String
+  facebookId: String,
+  secret: String
 });
 
 //use below plugin to use passportLocalMongoose
@@ -102,7 +103,7 @@ passport.use(new FacebookStrategy({
     callbackURL: "http://localhost:3000/auth/facebook/secrets"
   },
   function(accessToken, refreshToken, profile, cb) {
-    console.log(profile);
+    //console.log(profile);
     secretModel.findOrCreate({ facebookId: profile.id }, function (err, user) {
       return cb(err, user);
     });
@@ -142,7 +143,13 @@ app.get("/login", function(req, res) {
   res.render("login", {});
 });
 app.get("/submit", function(req, res) {
-  res.render("submit", {});
+  if(req.isAuthenticated()){
+    res.render("submit", {});
+  }
+  else{
+    res.redirect("/login");
+  }
+
 });
 
 app.get('/logout', function(req, res){
@@ -151,13 +158,18 @@ app.get('/logout', function(req, res){
 });
 
 app.get("/secrets",function(req,res){
-  if(req.isAuthenticated()){
-    res.render("secrets");
-  }
-  else{
-    res.redirect("/login");
-  }
+  secretModel.find({secret:{$ne:null}},function(err,founduser){
+    if(err){
+      console.log(err);
+    }
+    else{
+      if(founduser){
+        res.render("secrets",{userswithSecrets:founduser});
+      }
+    }
+  })
 });
+
 
 app.post("/login",function(req,res){
   const user=new secretModel({
@@ -192,9 +204,25 @@ app.post("/register",function(req,res){
 });
 });
 app.post("/submit", function(req, res) {
-  const secret = req.body.secret;
-  console.log(secret);
-  res.render("secrets");
+  const requestedSecret = req.body.secret;
+  //console.log(req.user);
+  secretModel.findById(req.user.id,function(err,founduser){
+    if(err){
+      console.log(err);
+    }
+    else{
+      founduser.secret=requestedSecret;
+      founduser.save(function(err){
+        if(err){
+          console.log(err);
+        }
+        else{
+          res.redirect("/secrets");
+        }
+      })
+    }
+  });
+
 });
 app.listen(3000, function() {
   console.log("Server started on port 3000");
